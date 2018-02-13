@@ -15,6 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javafx.fxml.FXML;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
@@ -24,6 +26,8 @@ public class AppController {
 	File baseFile, selectedRecordFile, nonSelectedRecordFile, refferIDFile;
 	String baseFileName, selectedFileName, nonSelectedFileName;
 	String baseFieldRecord;
+	boolean baseFileCheckFlag = true;
+	boolean reffFileCheckFlag = true;
 	String filePath = null;
 	String sysEncode;
 	List<String> baseRecordList = new ArrayList<String>();
@@ -51,6 +55,13 @@ public class AppController {
 		FileChooser fc = new FileChooser();
 		fc.setTitle("分割元csvファイルを指定してください");
 		baseFile = fc.showOpenDialog(log.getScene().getWindow());
+		if(baseFile==null) {
+			showAlert("分割元ファイルが指定されていません。");
+			baseFileCheckFlag = true;
+			return ;
+		}else {
+			baseFileCheckFlag = false;
+		}
 		log.appendText("元ファイルに" + baseFile.getAbsolutePath() + "が設定されました\n");
 		filePath = baseFile.getParent();
 		baseFileName = getPreffix(baseFile.getAbsolutePath());
@@ -89,9 +100,19 @@ public class AppController {
 	private void openRefferFile() {
 		sysEncode = System.getProperty("file.encoding");
 		FileChooser fc = new FileChooser();
-		fc.setInitialDirectory(new File(filePath));
+		if(filePath != null) {
+			fc.setInitialDirectory(new File(filePath));
+		}
 		fc.setTitle("参照IDを含む csv ファイルを指定してください");
 		refferIDFile = fc.showOpenDialog(log.getScene().getWindow());
+		if(refferIDFile == null) {
+			showAlert("参照IDを含んだファイルを指定してください。");
+			reffFileCheckFlag = true;
+			return;
+		}else {
+			reffFileCheckFlag = false;
+		}
+		filePath = refferIDFile.getParent();
 		log.appendText("参照ファイルに" + refferIDFile.getAbsolutePath() + "が設定されました\n");
 		//
 		String line = null;
@@ -123,6 +144,29 @@ public class AppController {
 
 	@FXML
 	private void execAction() {
+		//Fileが選択されているかどうかのチェック
+		if(baseFileCheckFlag) {
+			showAlert("元ファイルを選択してください。");
+			return;
+		}
+		if(reffFileCheckFlag) {
+			showAlert("参照IDを含んだファイルを選択してください");
+			return;
+		}
+		//接尾語をゲット
+		String addStr = suffixName.getText();
+		if(addStr.equals("")) {
+			showAlert("suffix 欄に分割後のファイルにつける接尾辞を入力してください。");
+			return;
+		}
+		//System.out.println("before: "+(String)baseFieldCombo.getValue());
+		//コンボの値
+		String baseComboStr = (String)baseFieldCombo.getValue();
+		String reffComboStr = (String)refferFieldCombo.getValue();
+		if((baseComboStr == null) || (reffComboStr == null)) {
+			showAlert("比較するキーを選んでください。");
+			return;
+		}
 		// 比較するフィールドの位置
 		int refferPos = 0;
 		int basePos = 0;
@@ -145,14 +189,15 @@ public class AppController {
 		}
 		// System.out.println("refferPos ="+refferPos);
 		// 参照フィールド番号にある値を比較する。
+		String key = null,keyReff= null;
 		boolean hitFlag = false;
 		for (String str : baseRecordList) {
 			String[] baseArray = str.split(",");
-			String key = baseArray[basePos];
+			key = baseArray[basePos];
 			hitFlag = false;
 			for (String s : refferIDList) {
 				String[] refferArray = s.split(",");
-				String keyReff = refferArray[refferPos];
+				keyReff = refferArray[refferPos];
 				if (key.equals(keyReff)) {
 					hitFlag = true;
 				}
@@ -163,14 +208,11 @@ public class AppController {
 				nonSelectedRecordList.add(str);
 			}
 		} // end of for(String str: baseRecodList)
-		System.out.println("num of base all:" + baseRecordList.size());
-		System.out.println("num of reffer :" + refferIDList.size());
-		System.out.println("num of selected :" + selectedRecordList.size());
-		System.out.println("num of noselected :" + nonSelectedRecordList.size());
+		log.appendText("\nnum of base all:" + baseRecordList.size());
+		log.appendText("\nnum of reffer :" + refferIDList.size());
+		log.appendText("\nnum of selected :" + selectedRecordList.size());
+		log.appendText("\nnum of noselected :" + nonSelectedRecordList.size());
 		// ファイルに書き込む
-		//接尾語をゲット
-		String addStr = suffixName.getText();
-		if(addStr.equals("")) return;
 		selectedRecordFile = new File(baseFileName+addStr+".csv");
 		nonSelectedRecordFile = new File(baseFileName+"No"+addStr+".csv");
 		// 文字コードを指定する
@@ -191,6 +233,12 @@ public class AppController {
 			//
 			printSelected.close();
 			printNonSelected.close();
+			//
+			String msg1 =new String("\n元ファイルの"+(String)baseFieldCombo.getValue()+"と"+"参照ファイルの" + (String)refferFieldCombo.getValue() + "が等しいレコードは\n");
+			String msg2 = new String(selectedRecordFile.getAbsolutePath()+"\tに書き込まれています\n");
+			String msg3 = new String("そうでないレコードは\n");
+			String msg4 = new String(nonSelectedRecordFile.getAbsolutePath()+"\tに書き込まれています。");
+			log.appendText(msg1+msg2+msg3+msg4);
 		} catch (UnsupportedEncodingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -208,5 +256,12 @@ public class AppController {
 	        return fileName.substring(0, point);
 	    } 
 	    return fileName;
+	}
+	//
+	private void showAlert(String str) {
+		Alert alert = new Alert(AlertType.WARNING);
+		alert.setTitle("ファイルを選択してください");
+		alert.getDialogPane().setContentText(str);
+		alert.showAndWait(); //表示
 	}
 }
