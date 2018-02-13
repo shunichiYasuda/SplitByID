@@ -65,7 +65,7 @@ public class AppController {
 		log.appendText("Œ³ƒtƒ@ƒCƒ‹‚É" + baseFile.getAbsolutePath() + "‚ªİ’è‚³‚ê‚Ü‚µ‚½\n");
 		filePath = baseFile.getParent();
 		baseFileName = getPreffix(baseFile.getAbsolutePath());
-		System.out.println(baseFileName);
+		//System.out.println(baseFileName);
 		//
 		String line = null;
 		try {
